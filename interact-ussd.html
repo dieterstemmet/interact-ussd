@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>USSD Simulator with Complete Actions</title>
+	<style>
+		label, input {
+			display: block;
+			margin: 8px 0;
+		}
+	</style>
+</head>
+<body>
+	<label for="msisdn">MSISDN:</label>
+	<input id="msisdn" type="text" placeholder="Enter MSISDN" value="" onchange="updateMSISDN(this.value)" />
+
+	<label for="location">Location:</label>
+	<input id="location" type="text" placeholder="Enter Location" value="" onchange="updateLocation(this.value)" />
+
+	<pre id="output"></pre>
+	<input type="text" id="input" placeholder="Enter option" autofocus />
+
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			initializeApplication();
+		});
+
+		function initializeApplication() {
+			let state = {
+				msisdn: localStorage.getItem('msisdn') || 'Not Set',
+				location: localStorage.getItem('location') || 'Not Set',
+				language: localStorage.getItem('language') || 'English',
+				optIn: localStorage.getItem('optIn') === 'true',
+				activeBundles: JSON.parse(localStorage.getItem('activeBundles')) || [],
+				menu: 'main',
+			};
+
+			document.getElementById('msisdn').value = state.msisdn !== 'Not Set' ? state.msisdn : '';
+			document.getElementById('location').value = state.location !== 'Not Set' ? state.location : '';
+
+			let menus = {
+				main: [
+					{ text: "Toggle Opt-In Status", action: toggleOptIn },
+					{ text: "Manage Bundles", action: () => navigateToMenu('bundleMenu') },
+					{ text: "Account Services", action: () => navigateToMenu('accountServices') },
+					{ text: "Switch Language", action: switchLanguage },
+					],
+				bundleMenu: [
+					{ text: "Buy Bundles", action: buyBundles },
+					{ text: "Bundle Usage", action: bundleUsage },
+					{ text: "Deactivate Bundles", action: deactivateBundles },
+					{ text: "Go Back", action: () => navigateToMenu('main') },
+					],
+				accountServices: [
+					{ text: "Account Balance", action: accountBalance },
+					{ text: "Discount Lookup", action: discountLookup },
+					{ text: "Priceplan Lookup", action: priceplanLookup },
+					{ text: "Notification Lookup", action: notificationLookup },
+					{ text: "Spin and Win", action: spinAndWin },
+					{ text: "Register/Deregister for Notifications/Ads", action: registerDeregisterNotifications },
+					{ text: "Go Back", action: () => navigateToMenu('main') },
+					],
+			};
+
+			function navigateToMenu(menuName) {
+				state.menu = menuName;
+				updateUI();
+			}
+
+			function updateUI() {
+				const menu = menus[state.menu];
+				let output = menu.map((item, index) => `${index + 1}. ${item.text}`).join('\n');
+				document.getElementById('output').textContent = output;
+				document.getElementById('input').value = '';
+				document.getElementById('input').focus();
+			}
+
+			function handleUserInput() {
+				const input = document.getElementById('input').value;
+				const menu = menus[state.menu];
+				const index = parseInt(input, 10) - 1;
+				
+				if (!isNaN(index) && menu[index] && menu[index].action) {
+					menu[index].action();
+				} else {
+					alert('Invalid option, please try again.');
+					updateUI();
+				}
+			}
+
+			function toggleOptIn() {
+				state.optIn = !state.optIn;
+				localStorage.setItem('optIn', state.optIn.toString());
+				alert(`Opt-In status is now ${state.optIn ? 'Enabled' : 'Disabled'}.`);
+				updateUI();
+			}
+
+			function switchLanguage() {
+				state.language = state.language === 'English' ? 'Spanish' : 'English';
+				localStorage.setItem('language', state.language);
+				alert(`Language switched to ${state.language}.`);
+				updateUI();
+			}
+
+			function buyBundles() {
+				const bundleChoice = prompt("Choose a bundle:\n1. 1GB for $10\n2. 500MB for $5");
+				if (bundleChoice === '1' || bundleChoice === '2') {
+					const bundle = bundleChoice === '1' ? { name: "1GB", price: "$10" } : { name: "500MB", price: "$5" };
+					state.activeBundles.push(bundle);
+					localStorage.setItem('activeBundles', JSON.stringify(state.activeBundles));
+					alert(`${bundle.name} bundle purchased successfully!`);
+				} else {
+					alert("Invalid option. Please try again.");
+				}
+				navigateToMenu('bundleMenu');
+			}
+
+			function bundleUsage() {
+				if (state.activeBundles.length === 0) {
+					alert("No active bundles.");
+				} else {
+					const bundlesList = state.activeBundles.map((bundle, index) => `${index + 1}. ${bundle.name} - ${bundle.price}`).join('\n');
+					alert(`Active Bundles:\n${bundlesList}`);
+				}
+				navigateToMenu('bundleMenu');
+			}
+
+			function deactivateBundles() {
+				if (state.activeBundles.length === 0) {
+					alert("No active bundles to deactivate.");
+				} else {
+					const index = prompt(`Enter the number of the bundle to deactivate:\n${state.activeBundles.map((bundle, index) => `${index + 1}. ${bundle.name} - ${bundle.price}`).join('\n')}`);
+					if (index > 0 && index <= state.activeBundles.length) {
+						state.activeBundles.splice(index - 1, 1);
+						localStorage.setItem('activeBundles', JSON.stringify(state.activeBundles));
+						alert("Bundle deactivated successfully.");
+					} else {
+						alert("Invalid selection.");
+					}
+				}
+				navigateToMenu('bundleMenu');
+			}
+
+			function accountBalance() {
+				alert("Your account balance is $50.");
+				navigateToMenu('accountServices');
+			}
+
+			function discountLookup() {
+				if (state.location.toLowerCase() === 'downtown') {
+					alert("Discount available: 10% off on data bundles.");
+				} else {
+					alert("No discounts available for your location.");
+				}
+				navigateToMenu('accountServices');
+			}
+
+			function priceplanLookup() {
+				alert("Your current price plan: Standard. $0.05/min for calls, $0.01/MB for data.");
+				navigateToMenu('accountServices');
+			}
+
+			function notificationLookup() {
+				const hasNotifications = state.optIn;
+				if (hasNotifications) {
+					alert("You have 1 new notification: Your data bundle is expiring soon.");
+				} else {
+					alert("No new notifications.");
+				}
+				navigateToMenu('accountServices');
+			}
+
+			function spinAndWin() {
+				const prizeNumber = Math.floor(Math.random() * 5) + 1;
+				switch (prizeNumber) {
+				case 1:
+					alert("Congratulations! You won 100MB of data!");
+					break;
+				case 2:
+					alert("Congratulations! You won 50 minutes of call time!");
+					break;
+				default:
+					alert("Sorry, no win this time. Try again!");
+					break;
+				}
+				navigateToMenu('accountServices');
+			}
+
+			function registerDeregisterNotifications() {
+				state.optIn = !state.optIn;
+				localStorage.setItem('optIn', state.optIn.toString());
+				alert(`Notifications ${state.optIn ? 'registered' : 'deregistered'}.`);
+				navigateToMenu('accountServices');
+			}
+
+			document.getElementById('input').addEventListener('keydown', (event) => {
+				if (event.key === 'Enter') handleUserInput();
+			});
+
+			// Utility functions to update MSISDN and Location directly
+			function updateMSISDN(value) {
+				localStorage.setItem('msisdn', value);
+				state.msisdn = value;
+			}
+
+			function updateLocation(value) {
+				localStorage.setItem('location', value);
+				state.location = value;
+			}
+
+			updateUI(); // Initial UI setup
+		}
+	</script>
+</head>
+<body>
+</body>
+</html>
